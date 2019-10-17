@@ -1,6 +1,10 @@
-//
-// Created by Jordan on 10/16/2019.
-//
+/*
+ * Name: Jordan Muehlbauer
+ * Date: 10/16/19
+ * Description: Implementation of source.h to handle Yahtzee Text Edition!
+ */
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,6 +21,7 @@ void openMenu() {
     int choice = 0;
     //Menu loop
     while (choice != EXIT) {
+        system("cls");
         printMenu();
         scanf("%d", &choice);
         if (choice == PRINT_RULES)printRules();
@@ -31,17 +36,23 @@ void printMenu() {
 }
 
 void printRules() {
-    printf("RULES\n\n");
+    //Clear the screen
+    system("cls");
+    //Print link to the rules
+    printf("View rules at https://www.yahtzeeonline.org/yahtzee-rules.php");
 }
 
 void newGame() {
+    //Clear the screen
+    system("cls");
+
     //Create two players
-    Player p1 = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,}};
-    Player p2 = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,}};
+    Player p1 = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
+    Player p2 = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 
     //Assign pointer variables for each so we can write to them from different scopes
-    Player *p1Ptr = &p1;
-    Player *p2Ptr = &p2;
+    Player* p1Ptr = &p1;
+    Player* p2Ptr = &p2;
 
     //Run 13 rounds of Yahtzee
     for (int i = 0; i < 13; ++i) {
@@ -49,24 +60,72 @@ void newGame() {
         turn(p2Ptr);
     }
 
+    //Wrap up the game
+    finishGame(p1, p2);
 }
+
+void finishGame(Player p1, Player p2) {
+    //collect the players scores
+    int p1Score = calculateTotalScore(p1);
+    int p2Score = calculateTotalScore(p2);
+
+    //Display scores
+    printf("Player 1 scored %d\n", p1Score);
+    printf("Player 2 scored %d\n", p2Score);
+
+    //Inform players of tie
+    if (p1Score == p2Score) {
+        printf("Therefore the game ended in a tie!\n");
+        system("pause");
+        return;
+    }
+
+    //Inform players of who won
+    if (p1Score > p2Score)printf("Therefore Player 1 won the game!\n");
+    else printf("Therefore Player 2 won the game!\n");
+    system("pause");
+}
+
+int calculateTotalScore(Player p) {
+    //initialize a variable to return the players total score
+    int totalScore = 0;
+
+    //Loop through all of the score slots on the players scoresheet
+    for (int i = 0; i < 13; ++i) {
+
+        //After the first 6 scores have been added up check if they get the bonus
+        if (i == 6 && totalScore > 63)totalScore += 35;
+
+        //Find the current score at position i
+        int score = p.scores[i];
+
+        //If the score was scratched continue
+        if (score == -1)continue;
+
+        //increase the total score
+        totalScore += score;
+    }
+
+    return totalScore;
+}
+
 
 void printPlayerDice(int dice[5]) {
     printf("Dice #1 %d\nDice #2 %d\nDice #3 %d\nDice #4 %d\nDice #5 %d\n", dice[0], dice[1], dice[2], dice[3], dice[4]);
 }
 
-void turn(Player *player) {
+void turn(Player* player) {
     //Initialize turn based variables
     int rolls = 0;
-    int dice[5] = {0, 0, 0, 0, 0};
-    int reroll[5] = {1, 1, 1, 1, 1};
+    int dice[5] = { 0, 0, 0, 0, 0 };
+    int reroll[5] = { 1, 1, 1, 1, 1 };
     int scored = 0;
     //Allow the player to keep rolling until they hit 3 turns
     while (rolls < 3 && scored != 1) {
 
         //Prompts the player
-        printf("Enter any key to roll\n");
-        scanf(" %c");
+        printf("Starting to roll!\n");
+        system("pause");
 
         //Roll the players dice
         roll(dice, reroll);
@@ -107,7 +166,8 @@ void turn(Player *player) {
 
                     //Peacefully exit the turn
                     scored = 1;
-                } else {
+                }
+                else {
                     //Inform user that they cannot use that score spot
                     printf("Sorry you cannot do that with your current scoresheet\n");
                     //Reset score-spot to an invalid response
@@ -122,9 +182,17 @@ void turn(Player *player) {
         //If the user has not scored allow them to decide what dice to reroll
         if (!scored) {
             int picked = 0;
+            //Reset reroll array
+            for (int i = 0; i < 5; ++i) {
+                reroll[i] = 1;
+            }
+
             while (picked != 4) {
+                //Display helpful menu
+                helpfulRerollMenu(dice, reroll);
+
                 //Ask the user what dice they would like to not reroll
-                printf("Which dice would you like to not re-roll? [1-5]? You can chose up to %d to not re-roll. To stop enter 6\n",
+                printf("Which dice's re-roll status would you like change? [1-5]? You can chose up to %d to not re-roll. To stop enter 6\n",
                        4 - picked);
 
                 int spot = 0;
@@ -136,18 +204,29 @@ void turn(Player *player) {
                 //If the requested dice position is invalid re-ask the question
                 if (spot < 1 || spot > 5)continue;
 
-                //Remove the roll from the reroll position
-                reroll[spot - 1] = -1;
-                picked += 1;
+                //Remove the roll from the reroll position or Add the roll back
+                int rolling = reroll[spot - 1];
 
-                //Inform the user
-                printf("No longer rolling dice #%d\n", spot);
+                //Adjust the reroll Array
+                reroll[spot - 1] = -rolling;
+
+                //Increase / Decrease the amount of dice selected for reroll based on the operation above
+                picked += rolling;
+
+                //Clear screen
+                system("cls");
             }
         }
     }
 
     //Clear the screen
     system("cls");
+}
+
+void helpfulRerollMenu(int dice[5], int reroll[5]) {
+    for (int i = 0; i < 5; ++i) {
+        printf("Dice #%d %d, Rerolling [%c]\n", (i + 1), dice[i], reroll[i] == 1 ? 'Y' : 'N');
+    }
 }
 
 void applyScore(int scores[13], int dice[5], int spot) {
@@ -249,6 +328,7 @@ int canUserUseScore(int scores[13], int spot) {
     return scores[spot] == 0 ? 1 : -1;
 }
 
+//Determins if a hand is a yahtzee
 int isYahtzee(int dice[5]) {
     int first = dice[0];
     for (int i = 1; i < 5; ++i) {
@@ -259,12 +339,15 @@ int isYahtzee(int dice[5]) {
 }
 
 int isSmallStraight(int dice[5]) {
+    //check for 1,2,3,4
     if (doesArrayContainInt(1, dice) + doesArrayContainInt(2, dice) + doesArrayContainInt(3, dice) +
         doesArrayContainInt(4, dice) == 4)
         return 1;
+    //check for 2,3,4,5
     if (doesArrayContainInt(2, dice) + doesArrayContainInt(3, dice) + doesArrayContainInt(4, dice) +
         doesArrayContainInt(5, dice) == 4)
         return 1;
+    //check for 3,4,5,6
     if (doesArrayContainInt(3, dice) + doesArrayContainInt(4, dice) + doesArrayContainInt(5, dice) +
         doesArrayContainInt(6, dice) == 4)
         return 1;
@@ -272,15 +355,18 @@ int isSmallStraight(int dice[5]) {
 }
 
 int isLargeStraight(int dice[5]) {
+    //check for 1,2,3,4,5
     if (doesArrayContainInt(1, dice) + doesArrayContainInt(2, dice) + doesArrayContainInt(3, dice) +
         doesArrayContainInt(4, dice) + doesArrayContainInt(5, dice) == 5)
         return 1;
+    //check for 2,3,4,5,6
     if (doesArrayContainInt(2, dice) + doesArrayContainInt(3, dice) + doesArrayContainInt(4, dice) +
         doesArrayContainInt(5, dice) + doesArrayContainInt(6, dice) == 5)
         return 1;
     return -1;
 }
 
+//Check if hand is a fullhouse
 int isFullhouse(int dice[5]) {
     int first = dice[0];
     int second = 0;
@@ -293,6 +379,7 @@ int isFullhouse(int dice[5]) {
     return 1;
 }
 
+//Check for three of a kind
 int isThreeOfAKind(int dice[5]) {
     for (int i = 0; i < 5; ++i) {
         int die = dice[i];
@@ -305,6 +392,7 @@ int isThreeOfAKind(int dice[5]) {
     return -1;
 }
 
+//Check for four of a kind
 int isFourOfAKind(int dice[5]) {
     for (int i = 0; i < 5; ++i) {
         int die = dice[i];
@@ -317,6 +405,7 @@ int isFourOfAKind(int dice[5]) {
     return -1;
 }
 
+//Returns 1 for true -1 for false
 int doesArrayContainInt(int value, int array[5]) {
     for (int i = 0; i < 5; ++i) {
         if (array[i] == value)return 1;
